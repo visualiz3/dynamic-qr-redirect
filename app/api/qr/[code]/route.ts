@@ -1,0 +1,38 @@
+import { NextResponse } from "next/server";
+import { getQR, setQR, deleteQR } from "@/lib/kv";
+
+interface Params {
+  params: Promise<{ code: string }>;
+}
+
+export async function PUT(request: Request, { params }: Params) {
+  const { code } = await params;
+  const { url, label } = await request.json();
+
+  if (!url || !label) {
+    return NextResponse.json(
+      { error: "Missing required fields" },
+      { status: 400 }
+    );
+  }
+
+  const existing = await getQR(code);
+  if (!existing) {
+    return NextResponse.json({ error: "QR code not found" }, { status: 404 });
+  }
+
+  await setQR(code, { url, label });
+  return NextResponse.json({ success: true });
+}
+
+export async function DELETE(_request: Request, { params }: Params) {
+  const { code } = await params;
+
+  const existing = await getQR(code);
+  if (!existing) {
+    return NextResponse.json({ error: "QR code not found" }, { status: 404 });
+  }
+
+  await deleteQR(code);
+  return NextResponse.json({ success: true });
+}
