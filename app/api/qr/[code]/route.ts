@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getQR, setQR, deleteQR } from "@/lib/kv";
+import { getQR, setQR, deleteQR, getPixel } from "@/lib/kv";
 
 interface Params {
   params: Promise<{ code: string }>;
@@ -7,7 +7,7 @@ interface Params {
 
 export async function PUT(request: Request, { params }: Params) {
   const { code } = await params;
-  const { url, label } = await request.json();
+  const { url, label, pixelId } = await request.json();
 
   if (!url || !label) {
     return NextResponse.json(
@@ -21,7 +21,18 @@ export async function PUT(request: Request, { params }: Params) {
     return NextResponse.json({ error: "QR code not found" }, { status: 404 });
   }
 
-  await setQR(code, { url, label });
+  // Validate the referenced pixel exists (if provided)
+  if (pixelId) {
+    const pixel = await getPixel(pixelId);
+    if (!pixel) {
+      return NextResponse.json(
+        { error: "Pixel not found" },
+        { status: 400 }
+      );
+    }
+  }
+
+  await setQR(code, { url, label, ...(pixelId && { pixelId }) });
   return NextResponse.json({ success: true });
 }
 

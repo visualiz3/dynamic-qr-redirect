@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Protect dashboard and API routes (except auth)
-  const protectedPaths = ["/dashboard", "/api/qr"];
+  const protectedPaths = ["/dashboard", "/api/qr", "/api/pixel"];
   const isProtected = protectedPaths.some(
     (path) => pathname.startsWith(path) || pathname === path
   );
@@ -31,5 +31,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/api/qr/:path*"],
+  matcher: ["/dashboard/:path*", "/api/qr/:path*", "/api/pixel/:path*"],
 };

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listQRs, setQR, getQR } from "@/lib/kv";
+import { listQRs, setQR, getQR, getPixel } from "@/lib/kv";
 
 export async function GET() {
   const qrs = await listQRs();
@@ -7,7 +7,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { code, url, label } = await request.json();
+  const { code, url, label, pixelId } = await request.json();
 
   if (!code || !url || !label) {
     return NextResponse.json(
@@ -24,6 +24,17 @@ export async function POST(request: Request) {
     );
   }
 
+  // Validate the referenced pixel exists (if provided)
+  if (pixelId) {
+    const pixel = await getPixel(pixelId);
+    if (!pixel) {
+      return NextResponse.json(
+        { error: "Pixel not found" },
+        { status: 400 }
+      );
+    }
+  }
+
   // Check if code already exists
   const existing = await getQR(code);
   if (existing) {
@@ -33,6 +44,6 @@ export async function POST(request: Request) {
     );
   }
 
-  await setQR(code, { url, label });
+  await setQR(code, { url, label, ...(pixelId && { pixelId }) });
   return NextResponse.json({ success: true });
 }
