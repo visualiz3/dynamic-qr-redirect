@@ -6,13 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -30,6 +23,7 @@ import {
 import { toast } from "sonner";
 import { QRPreview } from "@/components/qr-preview";
 import { PixelManager } from "@/components/pixel-manager";
+import { PixelSelect, toApiPixelId } from "@/components/pixel-select";
 
 interface QRCode {
   code: string;
@@ -47,8 +41,6 @@ interface Pixel {
   label: string;
   testEventCode?: string;
 }
-
-const NO_PIXEL = "__none__";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -109,7 +101,7 @@ export default function DashboardPage() {
         code: newQRCode,
         url: newQRUrl,
         label: newQRLabel,
-        pixelId: newQRPixelId && newQRPixelId !== NO_PIXEL ? newQRPixelId : undefined,
+        pixelId: toApiPixelId(newQRPixelId),
       }),
     });
 
@@ -137,7 +129,7 @@ export default function DashboardPage() {
       body: JSON.stringify({
         url: editUrl,
         label: editLabel,
-        pixelId: editPixelId && editPixelId !== NO_PIXEL ? editPixelId : undefined,
+        pixelId: toApiPixelId(editPixelId),
       }),
     });
 
@@ -170,6 +162,8 @@ export default function DashboardPage() {
     setEditQR(qr);
     setEditLabel(qr.data.label);
     setEditUrl(qr.data.url);
+    // Stale pixel IDs are handled inside PixelSelect (rendered as a
+    // "deleted pixel" option), so prefill faithfully either way
     setEditPixelId(qr.data.pixelId || "");
   }
 
@@ -242,22 +236,12 @@ export default function DashboardPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="qrPixel">Meta Pixel</Label>
-                    <Select
+                    <PixelSelect
+                      id="qrPixel"
                       value={newQRPixelId}
-                      onValueChange={setNewQRPixelId}
-                    >
-                      <SelectTrigger id="qrPixel" className="w-full">
-                        <SelectValue placeholder="No tracking" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={NO_PIXEL}>No tracking</SelectItem>
-                        {pixels.map((pixel) => (
-                          <SelectItem key={pixel.pixelId} value={pixel.pixelId}>
-                            {pixel.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      onChange={setNewQRPixelId}
+                      pixels={pixels}
+                    />
                     <p className="text-xs text-muted-foreground">
                       Scans of this QR will fire a server-side
                       &quot;QRScan&quot; event to the selected pixel.
@@ -369,7 +353,7 @@ export default function DashboardPage() {
         </section>
 
         <section>
-          <PixelManager />
+          <PixelManager pixels={pixels} onPixelsChanged={fetchPixels} />
         </section>
       </main>
 
@@ -401,19 +385,12 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="editPixel">Meta Pixel</Label>
-              <Select value={editPixelId} onValueChange={setEditPixelId}>
-                <SelectTrigger id="editPixel" className="w-full">
-                  <SelectValue placeholder="No tracking" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_PIXEL}>No tracking</SelectItem>
-                  {pixels.map((pixel) => (
-                    <SelectItem key={pixel.pixelId} value={pixel.pixelId}>
-                      {pixel.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <PixelSelect
+                id="editPixel"
+                value={editPixelId}
+                onChange={setEditPixelId}
+                pixels={pixels}
+              />
             </div>
             <Button type="submit" className="w-full">
               Update QR Code

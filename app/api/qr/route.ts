@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listQRs, setQR, getQR, getPixel } from "@/lib/kv";
+import { listQRs, setQR, getQR, pixelExists } from "@/lib/kv";
 
 export async function GET() {
   const qrs = await listQRs();
@@ -25,14 +25,8 @@ export async function POST(request: Request) {
   }
 
   // Validate the referenced pixel exists (if provided)
-  if (pixelId) {
-    const pixel = await getPixel(pixelId);
-    if (!pixel) {
-      return NextResponse.json(
-        { error: "Pixel not found" },
-        { status: 400 }
-      );
-    }
+  if (pixelId && !(await pixelExists(pixelId))) {
+    return NextResponse.json({ error: "Pixel not found" }, { status: 400 });
   }
 
   // Check if code already exists

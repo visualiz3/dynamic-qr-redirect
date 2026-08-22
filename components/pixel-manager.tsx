@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,18 +20,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import type { PixelOption } from "@/components/pixel-select";
 
-interface Pixel {
-  pixelId: string;
-  label: string;
-  testEventCode?: string;
-  createdAt: string;
+interface PixelManagerProps {
+  /** Pixel list owned by the dashboard page (single source of truth) */
+  pixels: PixelOption[];
+  /** Called after any create/update/delete so the page can refetch */
+  onPixelsChanged: () => void | Promise<void>;
 }
 
-export function PixelManager() {
-  const [pixels, setPixels] = useState<Pixel[]>([]);
-  const [loading, setLoading] = useState(true);
-
+export function PixelManager({ pixels, onPixelsChanged }: PixelManagerProps) {
   // New pixel dialog
   const [newPixelOpen, setNewPixelOpen] = useState(false);
   const [newLabel, setNewLabel] = useState("");
@@ -40,23 +38,10 @@ export function PixelManager() {
   const [newTestEventCode, setNewTestEventCode] = useState("");
 
   // Edit pixel dialog
-  const [editPixel, setEditPixel] = useState<Pixel | null>(null);
+  const [editPixel, setEditPixel] = useState<PixelOption | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [editAccessToken, setEditAccessToken] = useState("");
   const [editTestEventCode, setEditTestEventCode] = useState("");
-
-  const fetchPixels = useCallback(async () => {
-    const res = await fetch("/api/pixel");
-    if (res.ok) {
-      const data = await res.json();
-      setPixels(data);
-    }
-  }, []);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchPixels().finally(() => setLoading(false));
-  }, [fetchPixels]);
 
   async function handleCreatePixel(e: React.FormEvent) {
     e.preventDefault();
@@ -78,7 +63,7 @@ export function PixelManager() {
       setNewPixelId("");
       setNewAccessToken("");
       setNewTestEventCode("");
-      fetchPixels();
+      await onPixelsChanged();
     } else {
       const data = await res.json();
       toast.error(data.error || "Failed to add pixel");
@@ -91,7 +76,7 @@ export function PixelManager() {
 
     const body: Record<string, string> = { label: editLabel };
     if (editAccessToken) body.accessToken = editAccessToken;
-    if (editTestEventCode !== editPixel.testEventCode) {
+    if (editTestEventCode !== (editPixel.testEventCode || "")) {
       body.testEventCode = editTestEventCode;
     }
 
@@ -104,7 +89,7 @@ export function PixelManager() {
     if (res.ok) {
       toast.success("Pixel updated");
       setEditPixel(null);
-      fetchPixels();
+      await onPixelsChanged();
     } else {
       const data = await res.json();
       toast.error(data.error || "Failed to update pixel");
@@ -120,14 +105,10 @@ export function PixelManager() {
 
     if (res.ok) {
       toast.success("Pixel deleted");
-      fetchPixels();
+      await onPixelsChanged();
     } else {
       toast.error("Failed to delete pixel");
     }
-  }
-
-  if (loading) {
-    return <p className="text-muted-foreground">Loading...</p>;
   }
 
   return (

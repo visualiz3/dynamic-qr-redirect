@@ -80,6 +80,16 @@ export async function getPixel(pixelId: string): Promise<Pixel | null> {
   return kv.get<Pixel>(pixelKey(pixelId));
 }
 
+export async function pixelExists(pixelId: string): Promise<boolean> {
+  return (await getPixel(pixelId)) !== null;
+}
+
+/** Strips the access token — the only safe shape for API responses/logs. */
+export function toSafePixel(pixel: Pixel): Omit<Pixel, "accessToken"> {
+  const { accessToken: _accessToken, ...safe } = pixel;
+  return safe;
+}
+
 export async function createPixel(
   data: Omit<Pixel, "createdAt">
 ): Promise<Pixel> {
@@ -103,24 +113,23 @@ export async function updatePixel(
   return updated;
 }
 
-export async function deletePixel(pixelId: string): Promise<void> {
-  await kv.del(pixelKey(pixelId));
+export async function deletePixel(pixelId: string): Promise<boolean> {
+  const count = await kv.del(pixelKey(pixelId));
+  return count > 0;
 }
 
 /** List pixels WITHOUT access tokens — safe for API responses. */
-export async function listPixelsSafe(): Promise<
-  Omit<Pixel, "accessToken">[]
-> {
+export async function listPixelsSafe(): Promise<Omit<Pixel, "accessToken">[]> {
   const keys = await kv.keys("pixel:*");
   if (keys.length === 0) return [];
 
+  const values = await Promise.all(
+    keys.map((key) => kv.get<Pixel>(key))
+  );
+
   const results: Omit<Pixel, "accessToken">[] = [];
-  for (const key of keys) {
-    const data = await kv.get<Pixel>(key);
-    if (data) {
-      const { accessToken: _accessToken, ...safe } = data;
-      results.push(safe);
-    }
+  for (const data of values) {
+    if (data) results.push(toSafePixel(data));
   }
   return results;
 }

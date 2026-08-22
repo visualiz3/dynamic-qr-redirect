@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getQR, setQR, deleteQR, getPixel } from "@/lib/kv";
+import { getQR, setQR, deleteQR, pixelExists } from "@/lib/kv";
 
 interface Params {
   params: Promise<{ code: string }>;
@@ -22,14 +22,8 @@ export async function PUT(request: Request, { params }: Params) {
   }
 
   // Validate the referenced pixel exists (if provided)
-  if (pixelId) {
-    const pixel = await getPixel(pixelId);
-    if (!pixel) {
-      return NextResponse.json(
-        { error: "Pixel not found" },
-        { status: 400 }
-      );
-    }
+  if (pixelId && !(await pixelExists(pixelId))) {
+    return NextResponse.json({ error: "Pixel not found" }, { status: 400 });
   }
 
   await setQR(code, { url, label, ...(pixelId && { pixelId }) });

@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "crypto";
+import { randomUUID } from "crypto";
 
 const GRAPH_API_VERSION = "v21.0";
 
@@ -9,9 +9,9 @@ export interface QRScanEventInput {
   eventSourceUrl: string;
   clientIpAddress?: string;
   clientUserAgent?: string;
-  /** _fbp cookie value (browser ID) — hashed before sending */
+  /** _fbp cookie value (browser ID) — sent raw, per Meta's spec */
   fbp?: string;
-  /** _fbc cookie value or value built from fbclid — hashed before sending */
+  /** _fbc cookie value or value built from fbclid — sent raw, per Meta's spec */
   fbc?: string;
   qrLabel?: string;
   destinationUrl?: string;
@@ -28,11 +28,9 @@ export interface QRScanEventResult {
 /**
  * Per Meta's Conversions API spec:
  * - client_ip_address and client_user_agent are sent unhashed
- * - fbp and fbc must be SHA-256 hashed
+ * - fbp and fbc are advanced matching fields, sent raw (unhashed) —
+ *   only PII fields (em, ph, fn, ...) require SHA-256 hashing
  */
-function sha256(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
 
 /**
  * Sends a "QRScan" custom event to a Meta Pixel via the Conversions API.
@@ -46,8 +44,8 @@ export async function sendQRScanEvent(
   const userData: Record<string, string> = {};
   if (input.clientIpAddress) userData.client_ip_address = input.clientIpAddress;
   if (input.clientUserAgent) userData.client_user_agent = input.clientUserAgent;
-  if (input.fbp) userData.fbp = sha256(input.fbp);
-  if (input.fbc) userData.fbc = sha256(input.fbc);
+  if (input.fbp) userData.fbp = input.fbp;
+  if (input.fbc) userData.fbc = input.fbc;
 
   const customData: Record<string, string> = { qr_code: input.code };
   if (input.qrLabel) customData.qr_label = input.qrLabel;

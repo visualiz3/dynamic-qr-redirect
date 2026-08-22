@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listPixelsSafe, createPixel } from "@/lib/kv";
+import { listPixelsSafe, createPixel, getPixel, toSafePixel } from "@/lib/kv";
 
 export async function GET() {
   const pixels = await listPixelsSafe();
@@ -24,6 +24,16 @@ export async function POST(request: Request) {
     );
   }
 
+  // Reject duplicates — otherwise the existing pixel's token/config would be
+  // silently overwritten
+  const existing = await getPixel(pixelId);
+  if (existing) {
+    return NextResponse.json(
+      { error: "A pixel with this Pixel ID already exists" },
+      { status: 409 }
+    );
+  }
+
   const pixel = await createPixel({
     label,
     pixelId,
@@ -31,9 +41,5 @@ export async function POST(request: Request) {
     testEventCode: testEventCode || undefined,
   });
 
-  // Never echo the access token back
-  return NextResponse.json({
-    success: true,
-    pixel: { ...pixel, accessToken: undefined },
-  });
+  return NextResponse.json({ success: true, pixel: toSafePixel(pixel) });
 }
